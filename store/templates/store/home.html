@@ -1,0 +1,71 @@
+{% extends 'store/base.html' %}
+{% load static %}
+
+{% block title %}Home - Gujarat Crafts{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero">
+    <div class="hero-content">
+        <h2>Welcome to Gujarat Crafts</h2>
+        <p>Discover the beauty of handcrafted artistry from Gujarat's talented artisans</p>
+        <a href="#featured-products" class="btn btn-primary">Explore Products</a>
+    </div>
+    <div class="hero-image">
+        <img src="https://blog.expobazaar.com/wp-content/uploads/2022/11/pexels-los-muertos-crew-8066085-scaled.jpg" alt="Gujarat Artisans">
+    </div>
+</section>
+
+<!-- Featured Products Section -->
+<section id="featured-products" class="featured-products">
+    <div class="container">
+        <h2 class="section-title">Featured Products</h2>
+        <div class="products-grid">
+            {% for product in featured_products %}
+                <div class="product-card">
+                    {% if product.images.first %}
+                        <a href="{% url 'product_detail' product.id %}">
+                            <img src="{{ product.images.first.image.url }}" alt="{{ product.name }}">
+                        </a>
+                    {% else %}
+                        <a href="{% url 'product_detail' product.id %}">
+                            <img src="https://via.placeholder.com/300x300?text=No+Image" alt="{{ product.name }}">
+                        </a>
+                    {% endif %}
+                    <div class="product-info">
+                        <h3><a href="{% url 'product_detail' product.id %}">{{ product.name }}</a></h3>
+                        <div class="product-rating">
+                            <span class="stars">
+                                {% for i in "12345" %}
+                                    {% if forloop.counter <= product.rating|floatformat:0|add:"0" %}
+                                        <i class="fas fa-star"></i>
+                                    {% else %}
+                                        <i class="far fa-star"></i>
+                                    {% endif %}
+                                {% endfor %}
+                            </span>
+                            <span class="rating-value">({{ product.rating|floatformat:1 }})</span>
+                        </div>
+                        <div class="product-meta">
+                            <span class="sells"><i class="fas fa-shopping-bag"></i> {{ product.total_sells }} sold</span>
+                        </div>
+                        <div class="product-price">₹{{ product.price }}</div>
+                        <div class="product-actions">
+                            {% if user.is_authenticated %}
+                                {% if product.seller != user %}
+                                    <a href="{% url 'add_to_cart' product.id %}" class="btn btn-cart">Add to Cart</a>
+                                {% endif %}
+                            {% else %}
+                                <a href="{% url 'login' %}" class="btn btn-cart">Login to Buy</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <p class="no-products">No featured products available at the moment.</p>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}
+

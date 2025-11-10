@@ -1,0 +1,93 @@
+{% extends 'store/base.html' %}
+{% load static %}
+
+{% block title %}Search Results{% if query %} - "{{ query }}"{% endif %} - Gujarat Crafts{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Search Results</h1>
+        {% if query %}
+            <p>Search results for: <strong>"{{ query }}"</strong></p>
+            <p class="search-count">{{ total_results }} product{{ total_results|pluralize }} found</p>
+        {% else %}
+            <p>Please enter a search term to find products.</p>
+        {% endif %}
+    </div>
+
+    {% if query %}
+        {% if products %}
+            <div class="products-grid">
+                {% for product in products %}
+                    <div class="product-card">
+                        {% if product.images.first %}
+                            <a href="{% url 'product_detail' product.id %}">
+                                <img src="{{ product.images.first.image.url }}" alt="{{ product.name }}">
+                            </a>
+                        {% else %}
+                            <a href="{% url 'product_detail' product.id %}">
+                                <img src="https://via.placeholder.com/300x300?text=No+Image" alt="{{ product.name }}">
+                            </a>
+                        {% endif %}
+                        <div class="product-info">
+                            <h3><a href="{% url 'product_detail' product.id %}">{{ product.name }}</a></h3>
+                            <div class="product-rating">
+                                <span class="stars">
+                                    {% for i in "12345" %}
+                                        {% if forloop.counter <= product.rating|floatformat:0|add:"0" %}
+                                            <i class="fas fa-star"></i>
+                                        {% else %}
+                                            <i class="far fa-star"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </span>
+                                <span class="rating-value">({{ product.rating|floatformat:1 }})</span>
+                            </div>
+                            <div class="product-meta">
+                                <span class="sells"><i class="fas fa-shopping-bag"></i> {{ product.total_sells }} sold</span>
+                            </div>
+                            <div class="product-price">₹{{ product.price }}</div>
+                            <div class="product-actions">
+                                {% if user.is_authenticated %}
+                                    {% if product.seller != user %}
+                                        <a href="{% url 'add_to_cart' product.id %}" class="btn btn-cart">Add to Cart</a>
+                                    {% endif %}
+                                {% else %}
+                                    <a href="{% url 'login' %}" class="btn btn-cart">Login to Buy</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+                <div class="pagination">
+                    {% if page_obj.has_previous %}
+                        <a href="?q={{ query }}&page={{ page_obj.previous_page_number }}" class="btn btn-secondary">Previous</a>
+                    {% endif %}
+                    <span class="page-info">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                    {% if page_obj.has_next %}
+                        <a href="?q={{ query }}&page={{ page_obj.next_page_number }}" class="btn btn-secondary">Next</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="no-products">
+                <i class="fas fa-search"></i>
+                <h2>No products found</h2>
+                <p>Sorry, we couldn't find any products matching "{{ query }}".</p>
+                <p>Try searching with different keywords or <a href="{% url 'home' %}">browse our categories</a>.</p>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="no-products">
+            <i class="fas fa-search"></i>
+            <h2>Start Searching</h2>
+            <p>Use the search bar above to find products by name or description.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+

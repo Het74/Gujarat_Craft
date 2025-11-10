@@ -1,0 +1,220 @@
+{% extends 'store/base.html' %}
+{% load static %}
+
+{% block title %}Edit Product - Gujarat Crafts{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Edit Product</h1>
+    </div>
+
+    <div class="form-container">
+        <form method="POST" enctype="multipart/form-data" class="product-form">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="id_name">Product Name *</label>
+                {{ form.name }}
+                {% if form.name.errors %}
+                    <div class="error">{{ form.name.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="id_category">Category *</label>
+                <div class="category-select-wrapper">
+                    {{ form.category }}
+                    <button type="button" class="btn btn-sm btn-secondary" id="add-category-btn" onclick="openCategoryModal()">
+                        <i class="fas fa-plus"></i> Add New Category
+                    </button>
+                </div>
+                {% if form.category.errors %}
+                    <div class="error">{{ form.category.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="id_price">Price (₹) *</label>
+                    {{ form.price }}
+                    {% if form.price.errors %}
+                        <div class="error">{{ form.price.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="id_quantity">Quantity *</label>
+                    {{ form.quantity }}
+                    {% if form.quantity.errors %}
+                        <div class="error">{{ form.quantity.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="id_stock_status">Stock Status *</label>
+                {{ form.stock_status }}
+                {% if form.stock_status.errors %}
+                    <div class="error">{{ form.stock_status.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="id_description">Product Description *</label>
+                {{ form.description }}
+                {% if form.description.errors %}
+                    <div class="error">{{ form.description.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="id_images">Add More Product Images (Optional)</label>
+                <input type="file" name="images" id="id_images" multiple accept="image/*">
+                <small>You can add more images. Existing images will be preserved.</small>
+                {% if form.images.errors %}
+                    <div class="error">{{ form.images.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <div class="checkbox-wrapper">
+                    {{ form.is_featured }}
+                    <label for="id_is_featured" class="checkbox-label">Feature this product on homepage</label>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Update Product</button>
+                <button type="reset" class="btn btn-secondary">Reset</button>
+                <a href="{% url 'admin_page' %}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Category Modal -->
+<div id="categoryModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Add New Category</h2>
+            <span class="close-modal" onclick="closeCategoryModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="categoryForm">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="category_name">Category Name *</label>
+                    <input type="text" id="category_name" name="name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="category_description">Description (Optional)</label>
+                    <textarea id="category_description" name="description" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Add Category</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeCategoryModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function openCategoryModal() {
+    document.getElementById('categoryModal').style.display = 'block';
+}
+
+function closeCategoryModal() {
+    document.getElementById('categoryModal').style.display = 'none';
+    document.getElementById('categoryForm').reset();
+}
+
+// Close modal when clicking outside of it
+window.onclick = function(event) {
+    const modal = document.getElementById('categoryModal');
+    if (event.target == modal) {
+        closeCategoryModal();
+    }
+}
+
+// Handle category form submission
+document.getElementById('categoryForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const csrftoken = document.querySelector('#categoryForm [name=csrfmiddlewaretoken]').value;
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    
+    // Disable submit button and show loading state
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Adding...';
+    
+    fetch('{% url "add_category" %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Add new category to select dropdown
+            const select = document.getElementById('id_category');
+            const option = document.createElement('option');
+            option.value = data.category.id;
+            option.textContent = data.category.name;
+            option.selected = true;
+            select.appendChild(option);
+            
+            // Close modal and show success message
+            closeCategoryModal();
+            
+            // Show success message
+            let messagesContainer = document.querySelector('.messages');
+            if (!messagesContainer) {
+                messagesContainer = document.createElement('div');
+                messagesContainer.className = 'messages';
+                const mainContent = document.querySelector('.main-content');
+                if (mainContent) {
+                    mainContent.insertBefore(messagesContainer, mainContent.firstChild);
+                } else {
+                    document.body.insertBefore(messagesContainer, document.body.firstChild);
+                }
+            }
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message message-success';
+            messageDiv.innerHTML = 'Category "' + data.category.name + '" added successfully! <span class="close-message">&times;</span>';
+            messagesContainer.appendChild(messageDiv);
+            
+            // Add close functionality
+            messageDiv.querySelector('.close-message').addEventListener('click', function() {
+                messageDiv.style.transition = 'opacity 0.3s';
+                messageDiv.style.opacity = '0';
+                setTimeout(() => messageDiv.remove(), 300);
+            });
+            
+            // Auto-remove message after 5 seconds
+            setTimeout(() => {
+                messageDiv.style.transition = 'opacity 0.3s';
+                messageDiv.style.opacity = '0';
+                setTimeout(() => messageDiv.remove(), 300);
+            }, 5000);
+        } else {
+            alert('Error: ' + (data.error || 'Failed to add category'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while adding the category. Please try again.');
+    })
+    .finally(() => {
+        // Re-enable submit button
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    });
+});
+</script>
+{% endblock %}
+

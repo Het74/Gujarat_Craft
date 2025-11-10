@@ -1,0 +1,142 @@
+{% extends 'store/base.html' %}
+{% load static %}
+{% load video_filters %}
+
+{% block title %}{{ product.name }} - Gujarat Crafts{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="product-detail">
+        <div class="product-images">
+            <div class="main-image">
+                {% if primary_image %}
+                    <img src="{{ primary_image.image.url }}" alt="{{ product.name }}" id="main-product-image">
+                {% else %}
+                    <img src="https://via.placeholder.com/500x500?text=No+Image" alt="{{ product.name }}" id="main-product-image">
+                {% endif %}
+            </div>
+            {% if other_images or primary_image %}
+                <div class="thumbnail-images">
+                    {% if primary_image %}
+                        <img src="{{ primary_image.image.url }}" alt="Thumbnail" class="thumbnail active" onclick="changeMainImage(this)">
+                    {% endif %}
+                    {% for image in other_images %}
+                        <img src="{{ image.image.url }}" alt="Thumbnail" class="thumbnail" onclick="changeMainImage(this)">
+                    {% endfor %}
+                </div>
+            {% endif %}
+            
+            <!-- Product Videos Section -->
+            {% if videos %}
+                <div class="product-videos">
+                    <h3>Product Videos</h3>
+                    {% for video in videos %}
+                        <div class="video-container">
+                            {% if video.video %}
+                                <video controls class="product-video" preload="metadata" width="100%">
+                                    <source src="{{ video.video.url }}">
+                                    Your browser does not support the video tag.
+                                </video>
+                            {% elif video.video_url %}
+                                <div class="video-embed">
+                                    <iframe src="{{ video.video_url|youtube_embed_url }}" 
+                                            frameborder="0" 
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                            allowfullscreen
+                                            class="video-iframe">
+                                    </iframe>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        <div class="product-details">
+            <h1>{{ product.name }}</h1>
+            <div class="product-rating">
+                <span class="stars">
+                    {% for i in "12345" %}
+                        {% if forloop.counter <= product.rating|floatformat:0|add:"0" %}
+                            <i class="fas fa-star"></i>
+                        {% else %}
+                            <i class="far fa-star"></i>
+                        {% endif %}
+                    {% endfor %}
+                </span>
+                <span class="rating-value">({{ product.rating|floatformat:1 }})</span>
+                <span class="sells">{{ product.total_sells }} sold</span>
+            </div>
+            <div class="product-price">₹{{ product.price }}</div>
+            <div class="product-status">
+                <span class="stock-status {{ product.stock_status }}">
+                    {% if product.stock_status == 'in_stock' %}
+                        <i class="fas fa-check-circle"></i> In Stock
+                    {% else %}
+                        <i class="fas fa-times-circle"></i> Out of Stock
+                    {% endif %}
+                </span>
+            </div>
+            <div class="delivery-info">
+                <i class="fas fa-truck"></i> Expected delivery by {{ delivery_date|date:"F d, Y" }}
+            </div>
+            <div class="product-description">
+                <h3>Description</h3>
+                <p>{{ product.description }}</p>
+            </div>
+            <div class="product-actions">
+                {% if user.is_authenticated %}
+                    {% if product.seller != user %}
+                        {% if product.stock_status == 'in_stock' %}
+                            <div class="quantity-selector">
+                                <label for="quantity">Quantity:</label>
+                                <input type="number" id="quantity" name="quantity" value="1" min="1" max="{{ product.quantity }}">
+                            </div>
+                            <div class="action-buttons">
+                                <form method="POST" action="{% url 'add_to_cart' product.id %}" class="add-to-cart-form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="quantity" id="cart-quantity" value="1">
+                                    <button type="submit" class="btn btn-primary btn-large">Add to Cart</button>
+                                </form>
+                                <a href="{% url 'add_to_wishlist' product.id %}" class="btn btn-secondary btn-large">
+                                    <i class="fas fa-heart"></i> Add to Wishlist
+                                </a>
+                            </div>
+                        {% else %}
+                            <button class="btn btn-disabled" disabled>Out of Stock</button>
+                        {% endif %}
+                    {% else %}
+                        <p style="color: var(--light-text); font-style: italic;">This is your own product. You cannot add it to cart.</p>
+                    {% endif %}
+                {% else %}
+                    <a href="{% url 'login' %}" class="btn btn-primary btn-large">Login to Buy</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function changeMainImage(imgElement) {
+    document.getElementById('main-product-image').src = imgElement.src;
+    // Update active thumbnail
+    document.querySelectorAll('.thumbnail').forEach(thumb => {
+        thumb.classList.remove('active');
+    });
+    imgElement.classList.add('active');
+}
+
+// Sync quantity input with hidden form input
+document.addEventListener('DOMContentLoaded', function() {
+    const quantityInput = document.getElementById('quantity');
+    const cartQuantityInput = document.getElementById('cart-quantity');
+    
+    if (quantityInput && cartQuantityInput) {
+        quantityInput.addEventListener('change', function() {
+            cartQuantityInput.value = this.value;
+        });
+    }
+});
+</script>
+{% endblock %}
+

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Gujarat Crafts{% endblock %}</title>
+    {% load static %}
+    {% load video_filters %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <a href="{% url 'home' %}">
+                        <img src="{% static 'images/logo.png' %}" alt="Gujarat Crafts" class="logo-image">
+                    </a>
+                </div>
+                <div class="search-bar">
+                    <form method="GET" action="{% url 'search_products' %}" class="search-form">
+                        <input type="text" name="q" placeholder="Search products..." value="{{ request.GET.q }}" class="search-input">
+                        <button type="submit" class="search-btn">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </form>
+                </div>
+                <nav class="main-nav" id="mainNav">
+                    <ul>
+                        {% if user.is_authenticated %}
+                            <li><a href="{% url 'cart' %}">Cart</a></li>
+                            <li class="dropdown">
+                                <a href="#" class="dropdown-toggle">
+                                    <span class="user-avatar">{{ user|user_initials }}</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </a>
+                                <ul class="dropdown-menu">
+                                    <li><a href="{% url 'settings' %}"><i class="fas fa-user"></i> Your Personal Details</a></li>
+                                    <li><a href="{% url 'my_orders' %}"><i class="fas fa-shopping-bag"></i> Your Orders</a></li>
+                                    <li><a href="{% url 'wishlist' %}"><i class="fas fa-heart"></i> Your Wishlist</a></li>
+                                    <li><a href="{% url 'logout' %}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                                </ul>
+                            </li>
+                            {% if user.role == 'seller' %}
+                                <li><a href="{% url 'admin_page' %}">Sells Management</a></li>
+                            {% endif %}
+                        {% else %}
+                            <li><a href="{% url 'login' %}">Login</a></li>
+                            <li><a href="{% url 'signup' %}">Sign Up</a></li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                <!-- Mobile User Menu Button -->
+                {% if user.is_authenticated %}
+                <button class="mobile-user-toggle" id="mobileUserToggle" aria-label="Toggle user menu" aria-expanded="false">
+                    <span class="user-avatar">{{ user|user_initials }}</span>
+                    <i class="fas fa-chevron-up"></i>
+                </button>
+                {% endif %}
+                <!-- Mobile Side Panel -->
+                <div class="mobile-side-panel" id="mobileSidePanel">
+                    <div class="mobile-panel-overlay" id="mobilePanelOverlay"></div>
+                    <div class="mobile-panel-content">
+                        <div class="mobile-panel-header">
+                            <button class="mobile-panel-close" id="mobilePanelClose" aria-label="Close menu">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        {% if user.is_authenticated %}
+                        <div class="mobile-user-profile">
+                            <div class="mobile-user-avatar">{{ user|user_initials }}</div>
+                            <div class="mobile-user-info">
+                                <h3>{% if user.get_full_name %}{{ user.get_full_name }}{% else %}{{ user.username }}{% endif %}</h3>
+                                <p class="mobile-username">@{{ user.username }}</p>
+                                <p class="mobile-user-email">{{ user.email }}</p>
+                            </div>
+                        </div>
+                        <nav class="mobile-panel-nav">
+                            <ul>
+                                <li><a href="{% url 'home' %}"><i class="fas fa-home"></i> <span>Home</span></a></li>
+                                <li><a href="{% url 'cart' %}"><i class="fas fa-shopping-cart"></i> <span>Cart</span></a></li>
+                                <li><a href="{% url 'settings' %}"><i class="fas fa-user"></i> <span>Your Personal Details</span></a></li>
+                                <li><a href="{% url 'my_orders' %}"><i class="fas fa-shopping-bag"></i> <span>Your Orders</span></a></li>
+                                <li><a href="{% url 'wishlist' %}"><i class="fas fa-heart"></i> <span>Your Wishlist</span></a></li>
+                                {% if user.role == 'seller' %}
+                                <li><a href="{% url 'admin_page' %}"><i class="fas fa-store"></i> <span>Sells Management</span></a></li>
+                                {% endif %}
+                                <li><a href="{% url 'logout' %}"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a></li>
+                            </ul>
+                        </nav>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Category Navigation -->
+    <nav class="category-nav">
+        <div class="container">
+            <ul>
+                {% for category in categories %}
+                    <li><a href="{% url 'category_products' category.slug %}">{{ category.name }}</a></li>
+                {% empty %}
+                    <li><a href="#">No categories available</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Messages -->
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="message message-{{ message.tags }}">
+                    {{ message }}
+                    <span class="close-message">&times;</span>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Main Content -->
+    <main class="main-content">
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Gujarat Crafts</h3>
+                    <p>Celebrating the rich heritage of Gujarat's handcrafted artistry. Supporting local artisans and bringing authentic crafts to your doorstep.</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Quick Links</h3>
+                    <ul>
+                        <li><a href="{% url 'home' %}">Home</a></li>
+                        <li><a href="#">About Us</a></li>
+                        <li><a href="#">Contact Us</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Contact Details</h3>
+                    <p><i class="fas fa-envelope"></i> info@gujaratcrafts.com</p>
+                    <p><i class="fas fa-phone"></i> +91 9876543210</p>
+                    <p><i class="fas fa-map-marker-alt"></i> Gujarat, India</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Follow Us</h3>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-facebook"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-youtube"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Gujarat Crafts. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="{% static 'js/script.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+
