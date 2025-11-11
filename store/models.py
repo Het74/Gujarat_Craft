@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, MaxValueValidator
+from decimal import Decimal
 
 
 class User(AbstractUser):
@@ -156,5 +157,8 @@ class OrderItem(models.Model):
         return f"{self.order.order_number} - {self.product.name} x{self.quantity}"
 
     def get_total_price(self):
-        return self.quantity * self.price
+        # Handle possible None values to avoid TypeError in admin/templates
+        quantity = self.quantity or 0
+        price = self.price if self.price is not None else Decimal('0')
+        return quantity * price
 
