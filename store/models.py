@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db.models import Avg
 from decimal import Decimal
 
 
@@ -40,24 +41,37 @@ class Product(models.Model):
         ('out_of_stock', 'Out of Stock'),
     ]
     
+    APPROVAL_STATUS = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+    
     name = models.CharField(max_length=200)
     description = models.TextField()
     price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
     quantity = models.PositiveIntegerField(default=0)
     stock_status = models.CharField(max_length=20, choices=STOCK_STATUS, default='in_stock')
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products', blank=True, null=True)
     seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='products', limit_choices_to={'role': 'seller'})
     rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.0, validators=[MinValueValidator(0), MaxValueValidator(5)])
     total_sells = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_featured = models.BooleanField(default=False)
+    approval_status = models.CharField(max_length=20, choices=APPROVAL_STATUS, default='pending')
 
     class Meta:
         ordering = ['-created_at']
 
     def __str__(self):
         return self.name
+
+    def update_rating_from_reviews(self):
+        """Recalculate rating based on related reviews"""
+        avg_rating = self.reviews.aggregate(avg=Avg('rating'))['avg']
+        self.rating = round(avg_rating or 0, 2)
+        self.save(update_fields=['rating'])
 
 
 class ProductImage(models.Model):
@@ -161,4 +175,30 @@ class OrderItem(models.Model):
         quantity = self.quantity or 0
         price = self.price if self.price is not None else Decimal('0')
         return quantity * price
+
+
+class Review(models.Model):
+    """Product reviews"""
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
+    rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    review = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['product', 'user']
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.product.name} - {self.user.username} ({self.rating} stars)"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self.product.update_rating_from_reviews()
+
+    def delete(self, *args, **kwargs):
+        product = self.product
+        super().delete(*args, **kwargs)
+        product.update_rating_from_reviews()
 

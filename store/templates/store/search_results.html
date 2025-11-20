@@ -7,15 +7,22 @@
 <div class="container">
     <div class="page-header">
         <h1>Search Results</h1>
-        {% if query %}
-            <p>Search results for: <strong>"{{ query }}"</strong></p>
+        {% if has_filters %}
+            {% if query %}
+                <p>Search results for: <strong>"{{ query }}"</strong></p>
+            {% endif %}
+            {% if selected_category %}
+                <p>Category filter: <strong>{{ selected_category.name }}</strong></p>
+            {% elif category_param_present %}
+                <p>Category filter: <strong>All Categories</strong></p>
+            {% endif %}
             <p class="search-count">{{ total_results }} product{{ total_results|pluralize }} found</p>
         {% else %}
-            <p>Please enter a search term to find products.</p>
+            <p>Please enter a search term or select a category to find products.</p>
         {% endif %}
     </div>
 
-    {% if query %}
+    {% if has_filters %}
         {% if products %}
             <div class="products-grid">
                 {% for product in products %}
@@ -65,11 +72,23 @@
             {% if page_obj.has_other_pages %}
                 <div class="pagination">
                     {% if page_obj.has_previous %}
-                        <a href="?q={{ query }}&page={{ page_obj.previous_page_number }}" class="btn btn-secondary">Previous</a>
+                        <a href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.previous_page_number }}" class="btn btn-secondary">&laquo; Prev</a>
                     {% endif %}
-                    <span class="page-info">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+
+                    <div class="page-numbers">
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
+                                {% if page_obj.number == num %}
+                                    <span class="page-number current">{{ num }}</span>
+                                {% else %}
+                                    <a href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ num }}" class="page-number">{{ num }}</a>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+
                     {% if page_obj.has_next %}
-                        <a href="?q={{ query }}&page={{ page_obj.next_page_number }}" class="btn btn-secondary">Next</a>
+                        <a href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.next_page_number }}" class="btn btn-secondary">Next &raquo;</a>
                     {% endif %}
                 </div>
             {% endif %}
@@ -77,7 +96,14 @@
             <div class="no-products">
                 <i class="fas fa-search"></i>
                 <h2>No products found</h2>
-                <p>Sorry, we couldn't find any products matching "{{ query }}".</p>
+                {% if query %}
+                    <p>Sorry, we couldn't find any products matching "{{ query }}".</p>
+                {% endif %}
+                {% if selected_category %}
+                    <p>No products were found in the "{{ selected_category.name }}" category.</p>
+                {% elif category_param_present %}
+                    <p>No products were found across all categories.</p>
+                {% endif %}
                 <p>Try searching with different keywords or <a href="{% url 'home' %}">browse our categories</a>.</p>
             </div>
         {% endif %}

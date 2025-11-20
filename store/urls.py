@@ -20,6 +20,11 @@ urlpatterns = [
     path('delete-product/<int:product_id>/', views.delete_product, name='delete_product'),
     path('add-category/', views.add_category, name='add_category'),
     
+    # Admin Product Approval (Staff/Superuser only)
+    path('pending-products/', views.pending_products, name='pending_products'),
+    path('approve-product/<int:product_id>/', views.approve_product, name='approve_product'),
+    path('reject-product/<int:product_id>/', views.reject_product, name='reject_product'),
+    
     # Cart and Wishlist
     path('cart/', views.cart, name='cart'),
     path('add-to-cart/<int:product_id>/', views.add_to_cart, name='add_to_cart'),

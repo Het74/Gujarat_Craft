@@ -116,6 +116,100 @@
     </div>
 </div>
 
+<div class="container">
+    <section class="product-reviews" id="reviews">
+        <div class="reviews-header">
+            <h2>Customer Reviews</h2>
+            <div class="reviews-summary">
+                <div class="average-rating">
+                    <span class="rating-number">{{ product.rating|floatformat:1 }}</span>
+                    <span class="rating-label">Average Rating</span>
+                </div>
+                <div class="stars">
+                    {% for i in "12345" %}
+                        {% if forloop.counter <= product.rating|floatformat:0|add:"0" %}
+                            <i class="fas fa-star"></i>
+                        {% else %}
+                            <i class="far fa-star"></i>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <span class="reviews-count">{{ reviews|length }} review{{ reviews|length|pluralize }}</span>
+            </div>
+        </div>
+
+        {% if can_review and review_form %}
+            <div class="review-form-card">
+                <h3>{% if user_review %}Update Your Review{% else %}Write a Review{% endif %}</h3>
+                <form method="POST" action="#reviews" class="review-form">
+                    {% csrf_token %}
+                    {% if review_form.non_field_errors %}
+                        <div class="error">{{ review_form.non_field_errors|join:", " }}</div>
+                    {% endif %}
+                    <div class="form-group">
+                        <label>Rating</label>
+                        {{ review_form.rating }}
+                        {% if review_form.rating.errors %}
+                            <div class="error">{{ review_form.rating.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="form-group">
+                        <label>Your Review</label>
+                        {{ review_form.review }}
+                        {% if review_form.review.errors %}
+                            <div class="error">{{ review_form.review.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        {% if user_review %}Update Review{% else %}Submit Review{% endif %}
+                    </button>
+                </form>
+            </div>
+        {% elif user.is_authenticated %}
+            <p class="review-hint">Purchase this product to leave a review.</p>
+        {% else %}
+            <p class="review-hint"><a href="{% url 'login' %}">Login</a> to share your experience.</p>
+        {% endif %}
+
+        <div class="reviews-list">
+            {% if reviews %}
+                {% for review in reviews %}
+                    <div class="review-card">
+                        <div class="review-header">
+                            <div class="reviewer-info">
+                                <div class="reviewer-avatar">{{ review.user|user_initials }}</div>
+                                <div>
+                                    <strong>{{ review.user.get_full_name|default:review.user.username }}</strong>
+                                    <p class="review-date">{{ review.created_at|date:"F d, Y" }}</p>
+                                </div>
+                            </div>
+                            <div class="review-rating">
+                                {% for i in "12345" %}
+                                    {% if forloop.counter <= review.rating %}
+                                        <i class="fas fa-star"></i>
+                                    {% else %}
+                                        <i class="far fa-star"></i>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% if review.review %}
+                            <p class="review-text">{{ review.review }}</p>
+                        {% else %}
+                            <p class="review-text muted">No written review provided.</p>
+                        {% endif %}
+                        {% if user_review and user_review.id == review.id %}
+                            <span class="badge badge-info">Your Review</span>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p class="no-reviews">No reviews yet. Be the first to share your thoughts!</p>
+            {% endif %}
+        </div>
+    </section>
+</div>
+
 <script>
 function changeMainImage(imgElement) {
     document.getElementById('main-product-image').src = imgElement.src;

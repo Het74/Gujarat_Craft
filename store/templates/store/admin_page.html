@@ -36,7 +36,7 @@
                         <th>Stock</th>
                         <th>Quantity</th>
                         <th>Sales</th>
-                        <th>Status</th>
+                        <th>Approval Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -51,14 +51,20 @@
                                 {% endif %}
                             </td>
                             <td>{{ product.name }}</td>
-                            <td>{{ product.category.name }}</td>
+                            <td>{{ product.category.name|default:"No Category" }}</td>
                             <td>₹{{ product.price }}</td>
-                            <td>{{ product.stock_status|title }}</td>
+                            <td>{{ product.get_stock_status_display }}</td>
                             <td>{{ product.quantity }}</td>
                             <td>{{ product.total_sells }}</td>
                             <td>
-                                <span class="status-badge {{ product.stock_status }}">
-                                    {{ product.stock_status|title }}
+                                <span class="status-badge approval-{{ product.approval_status }}">
+                                    {% if product.approval_status == 'pending' %}
+                                        <i class="fas fa-clock"></i> Pending
+                                    {% elif product.approval_status == 'approved' %}
+                                        <i class="fas fa-check-circle"></i> Approved
+                                    {% elif product.approval_status == 'rejected' %}
+                                        <i class="fas fa-times-circle"></i> Rejected
+                                    {% endif %}
                                 </span>
                             </td>
                             <td>

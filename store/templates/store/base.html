@@ -21,6 +21,17 @@
                 </div>
                 <div class="search-bar">
                     <form method="GET" action="{% url 'search_products' %}" class="search-form">
+                        <div class="search-category">
+                            <select name="category" class="category-select">
+                                <option value="">All Categories</option>
+                                {% for category in categories %}
+                                    <option value="{{ category.slug }}" {% if request.GET.category == category.slug %}selected{% endif %}>{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <span class="category-caret">
+                                <i class="fas fa-chevron-down"></i>
+                            </span>
+                        </div>
                         <input type="text" name="q" placeholder="Search products..." value="{{ request.GET.q }}" class="search-input">
                         <button type="submit" class="search-btn">
                             <i class="fas fa-search"></i>
@@ -30,7 +41,6 @@
                 <nav class="main-nav" id="mainNav">
                     <ul>
                         {% if user.is_authenticated %}
-                            <li><a href="{% url 'cart' %}">Cart</a></li>
                             <li class="dropdown">
                                 <a href="#" class="dropdown-toggle">
                                     <span class="user-avatar">{{ user|user_initials }}</span>
@@ -38,8 +48,9 @@
                                 </a>
                                 <ul class="dropdown-menu">
                                     <li><a href="{% url 'settings' %}"><i class="fas fa-user"></i> Your Personal Details</a></li>
-                                    <li><a href="{% url 'my_orders' %}"><i class="fas fa-shopping-bag"></i> Your Orders</a></li>
                                     <li><a href="{% url 'wishlist' %}"><i class="fas fa-heart"></i> Your Wishlist</a></li>
+                                    <li><a href="{% url 'cart' %}"><i class="fas fa-shopping-cart"></i> Cart</a></li>
+                                    <li><a href="{% url 'my_orders' %}"><i class="fas fa-shopping-bag"></i> Your Orders</a></li>
                                     <li><a href="{% url 'logout' %}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
                                 </ul>
                             </li>
@@ -96,19 +107,6 @@
             </div>
         </div>
     </header>
-
-    <!-- Category Navigation -->
-    <nav class="category-nav">
-        <div class="container">
-            <ul>
-                {% for category in categories %}
-                    <li><a href="{% url 'category_products' category.slug %}">{{ category.name }}</a></li>
-                {% empty %}
-                    <li><a href="#">No categories available</a></li>
-                {% endfor %}
-            </ul>
-        </div>
-    </nav>
 
     <!-- Messages -->
     {% if messages %}

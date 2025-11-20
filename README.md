@@ -5,24 +5,28 @@ A Django-based e-commerce platform for Gujarat's handcrafted items, where artist
 ## Features
 
 ### For Buyers:
-- Browse products by category
-- View product details with image gallery
-- Add products to cart
-- Add products to wishlist
-- Place orders with cash on delivery
-- Manage profile and settings
+- Browse products by category or use the Amazon-style search bar with category filter
+- Discover featured products on the homepage (paginated list, 8 per page)
+- View product details with image gallery, video support, and full review section
+- Read/write product reviews (1–5 stars) after purchasing an item
+- Add products to cart or wishlist, then place orders with cash on delivery
+- Manage personal profile and account settings
 
 ### For Sellers:
-- Admin panel to manage products
-- Add, edit, and delete products
-- View stock status and sales statistics
-- Upload multiple product images and videos
-- Feature products on homepage
+- Seller dashboard (“Sells Management”) to track inventory and sales
+- Add, edit, delete, and feature products with multiple media uploads
+- Monitor stock levels, quantities sold, and approval status
+- Product approval workflow: new/edited products stay hidden until staff approves them
+- View inline status badges showing stock + approval state
+
+### For Staff / Admin:
+- Dedicated “Pending Products” page to approve/reject seller submissions
+- Full review moderation via Django admin (all reviews stored centrally)
 
 ## Technology Stack
 
 - **Backend**: Django 4.2.7
-- **Frontend**: HTML, CSS, JavaScript
+- **Frontend**: HTML, CSS, JavaScript (custom responsive theme inspired by Gujarati crafts)
 - **Database**: SQLite (default)
 - **Image Handling**: Pillow
 
@@ -156,28 +160,32 @@ gujarat_Crafts/
 ## Features Implementation
 
 ### Home Page
-- Header with navigation and logo
-- Category navigation bar
-- Hero section with engaging visuals
-- Featured products grid (6 products)
+- Sticky header with logo, account shortcuts, and search bar (category dropdown + keyword)
+- Hero section with artisan-focused imagery and CTA
+- Featured products grid with pagination (8 per page) and graceful fallbacks when empty
 
 ### Product Pages
-- Category-wise product listing with pagination (12 per page)
-- Product detail page with image gallery
-- Product rating and sales information
-- Add to cart and wishlist functionality
+- Category listing pages with pagination (8 per page) and stock/approval filtering
+- Product detail page featuring image gallery, video embeds, delivery estimate, and sales stats
+- Review system: buyers who completed an order can submit/edit a 1–5 star review plus text
+- Live average rating recalculations and review list with avatars + timestamps
+- Add-to-cart, wishlist, and quantity controls (prevents sellers buying own products)
 
 ### Admin Panel (Seller)
-- Dashboard with statistics
-- Product management (add, edit, delete)
-- Stock and sales tracking
-- Product listing table
+- Dashboard cards summarizing product count and total sales
+- Product table with preview image, category, price, quantity, sales, and approval badge
+- Quick actions to edit/delete entries and link to add-product form
+- All new/edited products automatically revert to “Pending” until approved
 
 ### Cart & Checkout
-- Shopping cart with quantity management
-- Checkout page with delivery address
-- Order confirmation with order number
-- Cash on delivery payment method
+- Shopping cart with quantity management and validation
+- Checkout page collects address, PIN, and payment method (COD) with stock double-check
+- Order confirmation page showing order number and summary
+
+### Reviews & Ratings
+- `Review` model links each buyer/product pair (one review per purchase)
+- Review form rendered inline on the product page when the buyer qualifies (delivered order, not seller)
+- Product rating field auto-updates using average of all approved reviews
 
 ### Settings
 - Profile management
@@ -195,13 +203,12 @@ gujarat_Crafts/
 ## Future Enhancements
 
 - Payment gateway integration
-- Order tracking
-- Product reviews and ratings system
-- Advanced search and filters
-- Email notifications
-- About and Contact pages
+- Order tracking & shipment updates
+- Advanced search filters (price range, rating, etc.)
+- Email/SMS notifications
+- Rich CMS pages (About, Contact, FAQ)
 - Product comparison feature
-- Seller dashboard analytics
+- Seller analytics dashboard and export tools
 
 ## License
 

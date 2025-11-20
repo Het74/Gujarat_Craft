@@ -7,52 +7,89 @@ from django.utils import timezone
 from django.http import JsonResponse
 from django.db.models import Q
 from datetime import timedelta
+from django.utils.http import urlencode
 import random
 import string
 
-from .models import User, Product, Category, Cart, Wishlist, Order, OrderItem, ProductImage, ProductVideo
-from .forms import UserRegistrationForm, ProductForm, UserSettingsForm
+from .models import User, Product, Category, Cart, Wishlist, Order, OrderItem, ProductImage, ProductVideo, Review
+from .forms import UserRegistrationForm, ProductForm, UserSettingsForm, ReviewForm
 
 
 def home(request):
     """Home page with featured products"""
-    featured_products = Product.objects.filter(is_featured=True, stock_status='in_stock')[:6]
+    featured_products = Product.objects.filter(
+        is_featured=True,
+        stock_status='in_stock',
+        approval_status='approved'
+    ).order_by('-created_at')
     
     # If no featured products, show recent products
-    if not featured_products:
-        featured_products = Product.objects.filter(stock_status='in_stock')[:6]
+    if not featured_products.exists():
+        featured_products = Product.objects.filter(
+            stock_status='in_stock',
+            approval_status='approved'
+        ).order_by('-created_at')
+    
+    paginator = Paginator(featured_products, 8)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
     
     context = {
-        'featured_products': featured_products,
+        'featured_products': page_obj,
+        'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
     }
     return render(request, 'store/home.html', context)
 
 
 def search_products(request):
-    """Search products by name or description"""
+    """Search products by name or description (optionally filtered by category)"""
     query = request.GET.get('q', '').strip()
-    products = Product.objects.filter(stock_status='in_stock')
+    category_value = request.GET.get('category')
+    category_param_present = 'category' in request.GET
+    category_slug = (category_value or '').strip()
+    
+    products = Product.objects.filter(stock_status='in_stock', approval_status='approved')
+    selected_category = None
+    
+    if category_slug:
+        selected_category = Category.objects.filter(slug=category_slug).first()
+        if selected_category:
+            products = products.filter(category=selected_category)
     
     if query:
-        # Search in product name and description
         products = products.filter(
             Q(name__icontains=query) | Q(description__icontains=query)
         )
+        total_results = products.count()
+    elif selected_category or category_param_present:
         total_results = products.count()
     else:
         products = products.none()
         total_results = 0
     
     # Pagination - 12 products per page
-    paginator = Paginator(products, 12)
+    paginator = Paginator(products, 8)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+    
+    query_params = {}
+    if query:
+        query_params['q'] = query
+    if category_param_present:
+        query_params['category'] = category_slug
+    pagination_query = urlencode(query_params)
     
     context = {
         'query': query,
         'products': page_obj,
         'page_obj': page_obj,
         'total_results': total_results,
+        'selected_category': selected_category,
+        'category_slug': category_slug if category_param_present else '',
+        'category_param_present': category_param_present,
+        'has_filters': bool(query or selected_category or category_param_present),
+        'pagination_query': pagination_query,
     }
     return render(request, 'store/search_results.html', context)
 
@@ -109,7 +146,7 @@ def logout_view(request):
 def category_products(request, category_slug):
     """Category-wise products page with pagination"""
     category = get_object_or_404(Category, slug=category_slug)
-    products = Product.objects.filter(category=category, stock_status='in_stock')
+    products = Product.objects.filter(category=category, stock_status='in_stock', approval_status='approved')
     
     # Pagination - 12 products per page
     paginator = Paginator(products, 12)
@@ -126,7 +163,16 @@ def category_products(request, category_slug):
 
 def product_detail(request, product_id):
     """Product detail page with image gallery"""
-    product = get_object_or_404(Product, id=product_id)
+    # Only show approved products to non-sellers, or show to seller if it's their own product
+    if request.user.is_authenticated and request.user.role == 'seller':
+        # Sellers can view their own products regardless of approval status
+        product = get_object_or_404(Product, id=product_id)
+        if product.seller != request.user:
+            # If viewing another seller's product, must be approved
+            product = get_object_or_404(Product, id=product_id, approval_status='approved')
+    else:
+        # Non-sellers and anonymous users can only see approved products
+        product = get_object_or_404(Product, id=product_id, approval_status='approved')
     images = product.images.all()
     primary_image = images.filter(is_primary=True).first() or images.first()
     if primary_image:
@@ -139,13 +185,50 @@ def product_detail(request, product_id):
     
     # Calculate delivery date (7 days from now)
     delivery_date = timezone.now().date() + timedelta(days=7)
-    
+    reviews = product.reviews.select_related('user').order_by('-created_at')
+    review_form = None
+    user_review = None
+    can_review = False
+    has_purchased = False
+
+    if request.user.is_authenticated:
+        user_review = reviews.filter(user=request.user).first()
+        eligible_statuses = ['confirmed', 'shipped', 'delivered']
+        has_purchased = OrderItem.objects.filter(
+            order__user=request.user,
+            product=product,
+            order__status__in=eligible_statuses
+        ).exists()
+        can_review = has_purchased and product.seller != request.user
+
+        if request.method == 'POST':
+            if can_review:
+                review_form = ReviewForm(request.POST, instance=user_review)
+                if review_form.is_valid():
+                    review = review_form.save(commit=False)
+                    review.product = product
+                    review.user = request.user
+                    review.save()
+                    messages.success(request, 'Thank you for sharing your review!')
+                    return redirect('product_detail', product_id=product_id)
+                else:
+                    messages.error(request, 'Please fix the errors in your review.')
+            else:
+                messages.error(request, 'You need to purchase this product before leaving a review.')
+        elif can_review:
+            review_form = ReviewForm(instance=user_review)
+
     context = {
         'product': product,
         'primary_image': primary_image,
         'other_images': other_images,
         'videos': videos,
         'delivery_date': delivery_date,
+        'reviews': reviews,
+        'review_form': review_form,
+        'user_review': user_review,
+        'can_review': can_review,
+        'has_purchased': has_purchased,
     }
     return render(request, 'store/product_detail.html', context)
 
@@ -232,6 +315,7 @@ def add_product(request):
             
             product = form.save(commit=False)
             product.seller = request.user
+            product.approval_status = 'pending'  # New products start as pending
             product.save()
             
             # Handle multiple images
@@ -247,11 +331,7 @@ def add_product(request):
             if video:
                 ProductVideo.objects.create(product=product, video=video)
             
-            video_url = form.cleaned_data.get('video_url')
-            if video_url:
-                ProductVideo.objects.create(product=product, video_url=video_url)
-            
-            messages.success(request, 'Product added successfully!')
+            messages.success(request, 'Product added successfully! It will be reviewed by admin before going live.')
             return redirect('admin_page')
     else:
         form = ProductForm()
@@ -276,7 +356,10 @@ def edit_product(request, product_id):
     if request.method == 'POST':
         form = ProductForm(request.POST, request.FILES, instance=product)
         if form.is_valid():
-            form.save()
+            product = form.save(commit=False)
+            # Reset approval status to pending when product is edited
+            product.approval_status = 'pending'
+            product.save()
             
             # Handle new images
             images = request.FILES.getlist('images')
@@ -284,7 +367,7 @@ def edit_product(request, product_id):
                 for image in images:
                     ProductImage.objects.create(product=product, image=image)
             
-            messages.success(request, 'Product updated successfully!')
+            messages.success(request, 'Product updated successfully! It will be reviewed by admin before going live.')
             return redirect('admin_page')
     else:
         form = ProductForm(instance=product)
@@ -333,6 +416,11 @@ def settings(request):
 def add_to_cart(request, product_id):
     """Add product to cart"""
     product = get_object_or_404(Product, id=product_id)
+    
+    # Only approved products can be added to cart
+    if product.approval_status != 'approved':
+        messages.error(request, 'This product is not available for purchase yet.')
+        return redirect('product_detail', product_id=product_id)
     
     # Prevent sellers from adding their own products to cart
     if product.seller == request.user:
@@ -495,6 +583,20 @@ def buy_now(request):
             messages.error(request, 'You cannot buy your own products. Please remove them from cart.')
             return redirect('cart')
         
+        # Verify stock availability
+        insufficient_items = []
+        for cart_item in cart_items:
+            available_quantity = cart_item.product.quantity
+            if available_quantity < cart_item.quantity or cart_item.product.stock_status == 'out_of_stock':
+                insufficient_items.append(f"{cart_item.product.name} (available: {available_quantity})")
+        
+        if insufficient_items:
+            messages.error(
+                request,
+                'Insufficient stock for: ' + ', '.join(insufficient_items)
+            )
+            return redirect('cart')
+        
         # Generate order number
         order_number = 'ORD' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
         
@@ -549,4 +651,49 @@ def order_confirmation(request, order_id):
         'order': order,
     }
     return render(request, 'store/order_confirmation.html', context)
+
+
+@login_required
+def pending_products(request):
+    """Admin page to view pending products for approval"""
+    if not request.user.is_staff and not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to access this page.')
+        return redirect('home')
+    
+    pending_products_list = Product.objects.filter(approval_status='pending').order_by('-created_at')
+    
+    context = {
+        'pending_products': pending_products_list,
+    }
+    return render(request, 'store/pending_products.html', context)
+
+
+@login_required
+def approve_product(request, product_id):
+    """Approve a product - Admin only"""
+    if not request.user.is_staff and not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to perform this action.')
+        return redirect('home')
+    
+    product = get_object_or_404(Product, id=product_id)
+    product.approval_status = 'approved'
+    product.save()
+    
+    messages.success(request, f'Product "{product.name}" has been approved and is now live!')
+    return redirect('pending_products')
+
+
+@login_required
+def reject_product(request, product_id):
+    """Reject a product - Admin only"""
+    if not request.user.is_staff and not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to perform this action.')
+        return redirect('home')
+    
+    product = get_object_or_404(Product, id=product_id)
+    product.approval_status = 'rejected'
+    product.save()
+    
+    messages.success(request, f'Product "{product.name}" has been rejected.')
+    return redirect('pending_products')
 

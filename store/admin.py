@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, Category, Product, ProductImage, ProductVideo, Cart, Wishlist, Order, OrderItem
+from .models import User, Category, Product, ProductImage, ProductVideo, Cart, Wishlist, Order, OrderItem, Review
 
 
 @admin.register(User)
@@ -27,10 +27,17 @@ class ProductVideoInline(admin.TabularInline):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ['name', 'seller', 'category', 'price', 'quantity', 'stock_status', 'rating', 'total_sells', 'is_featured']
-    list_filter = ['category', 'stock_status', 'is_featured', 'created_at']
+    list_display = ['name', 'seller', 'category', 'price', 'quantity', 'stock_status', 'approval_status', 'rating', 'total_sells', 'is_featured']
+    list_filter = ['category', 'stock_status', 'approval_status', 'is_featured', 'created_at']
     search_fields = ['name', 'description']
     inlines = [ProductImageInline, ProductVideoInline]
+
+
+@admin.register(Review)
+class ReviewAdmin(admin.ModelAdmin):
+    list_display = ['product', 'user', 'rating', 'created_at']
+    list_filter = ['rating', 'created_at']
+    search_fields = ['product__name', 'user__username', 'review']
 
 
 @admin.register(Cart)

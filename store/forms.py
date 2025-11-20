@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from .models import User, Product, ProductImage, ProductVideo, Category
+from .models import User, Product, ProductImage, ProductVideo, Category, Review
 
 
 class UserRegistrationForm(UserCreationForm):
@@ -38,7 +38,6 @@ class ProductForm(forms.ModelForm):
     # Note: Multiple file upload is handled in the view using request.FILES.getlist('images')
     images = forms.ImageField(widget=forms.FileInput(attrs={'accept': 'image/*'}), required=False)
     video = forms.FileField(required=False, widget=forms.FileInput(attrs={'accept': 'video/*'}))
-    video_url = forms.URLField(required=False, widget=forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'Enter video URL (optional)'}))
 
     class Meta:
         model = Product
@@ -52,6 +51,14 @@ class ProductForm(forms.ModelForm):
             'category': forms.Select(attrs={'class': 'form-control'}),
             'is_featured': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['category'].required = False
+        self.fields['category'].widget.attrs['class'] = 'form-control'
+        # Add empty option for category
+        self.fields['category'].queryset = Category.objects.all()
+        self.fields['category'].empty_label = "No Category (Optional)"
 
 
 class UserSettingsForm(forms.ModelForm):
@@ -63,5 +70,22 @@ class UserSettingsForm(forms.ModelForm):
             'full_name': forms.TextInput(attrs={'class': 'form-control'}),
             'phone_number': forms.TextInput(attrs={'class': 'form-control'}),
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
+        }
+
+
+class ReviewForm(forms.ModelForm):
+    """Form for submitting product reviews"""
+    rating = forms.TypedChoiceField(
+        choices=[(i, f"{i} Star" if i == 1 else f"{i} Stars") for i in range(1, 6)],
+        widget=forms.RadioSelect(attrs={'class': 'rating-field'}),
+        label='Rating',
+        coerce=int
+    )
+
+    class Meta:
+        model = Review
+        fields = ['rating', 'review']
+        widgets = {
+            'review': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Share your experience...', 'class': 'form-control'}),
         }
 
